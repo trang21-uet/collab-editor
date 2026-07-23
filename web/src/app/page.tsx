@@ -1,28 +1,29 @@
 "use client";
 
-import { useMemo } from "react";
-import * as Y from "yjs";
 import { CollaborativeEditor } from "@/components/CollaborativeEditor";
+import { useHocuspocusProvider } from "@/lib/useHocuspocusProvider";
+
+const DOCUMENT_NAME = "phase-2-demo";
 
 export default function Home() {
-  // Stable across re-renders; not a server-synced doc yet — that's Phase 2.
-  const ydoc = useMemo(() => new Y.Doc(), []);
+  const provider = useHocuspocusProvider(DOCUMENT_NAME);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
       <div>
-        <h1 className="text-2xl font-bold">CRDT Playground — Phase 1</h1>
+        <h1 className="text-2xl font-bold">CRDT Playground — Phase 2</h1>
         <p className="mt-1 text-sm text-black/60 dark:text-white/60">
-          Both editors below are bound to the same in-memory Yjs document, with
-          no server involved. Type in either one — Yjs merges the edits and
-          both panes converge, confirming the Tiptap ↔ Yjs binding works
-          before WebSocket sync is introduced in Phase 2.
+          This editor syncs through a standalone Hocuspocus WebSocket server
+          (document: <code>{DOCUMENT_NAME}</code>). Open this page in a
+          second browser tab and type in either — changes should appear in
+          both within milliseconds.
         </p>
       </div>
-      <div className="flex flex-col gap-6 sm:flex-row">
-        <CollaborativeEditor ydoc={ydoc} label="Editor A" />
-        <CollaborativeEditor ydoc={ydoc} label="Editor B" />
-      </div>
+      {provider ? (
+        <CollaborativeEditor provider={provider} label={`ws://localhost:1234`} />
+      ) : (
+        <p className="text-sm text-black/40 dark:text-white/40">Connecting…</p>
+      )}
     </main>
   );
 }

@@ -1,0 +1,40 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | {\n  read -r f\n  case \"$f\" in\n    */web/*) out=$(pnpm --dir web lint 2>&1); code=$? ;;\n    */sync-server/*) out=$(pnpm --dir sync-server exec tsc --noEmit 2>&1); code=$? ;;\n    *) exit 0 ;;\n  esac\n  if [ \"$code\" -ne 0 ]; then\n    echo \"$out\" >&2\n    exit 2\n  fi\n}",
+            "timeout": 60,
+            "statusMessage": "Linting changed files..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // empty' | { read -r c; if echo \"$c\" | grep -qiE 'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f|rm[[:space:]]+-[a-zA-Z]*f[a-zA-Z]*r|git[[:space:]]+push[[:space:]]+.*(--force|-f\\b)|drop[[:space:]]+database|dropdb|truncate[[:space:]]+table'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked by collab-editor safety hook: destructive command matched (rm -rf / force-push / drop database / truncate table). Ask the user directly before running this.\"}}'; exit 0; fi; }",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "This is the end of a Claude Code session working on the collab-editor project at /home/trangnx/Work/collab-editor. Run `git status` and `git diff` (and `git diff --stat` for untracked-heavy changes) in that directory to see what changed this session. Append a new dated entry (## YYYY-MM-DD) to /home/trangnx/Work/collab-editor/CHANGELOG.md \u2014 create the file with a top-level `# Changelog` heading if it doesn't exist yet. Summarize in a few bullet points: what changed, which files/areas were touched, and anything the user should double-check before committing. Keep it concise \u2014 this is so the user can review a session at a glance without reading the full diff. Do not commit anything.",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
