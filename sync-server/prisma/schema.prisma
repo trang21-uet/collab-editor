@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Minimal mirror of api/prisma/schema.prisma. api owns migrations (`prisma migrate dev`);
+// this file is never migrated, only `prisma generate`d against the DB api already
+// migrated. It declares just enough of Document/DocumentSnapshot to type the two
+// operations sync-server performs: check a Document exists, and read/write its
+// DocumentSnapshot rows. No User/DocumentPermission, no unmanaged Document columns.
+model Document {
+  id        String             @id
+  snapshots DocumentSnapshot[]
+}
+
+model DocumentSnapshot {
+  documentId String
+  ydocState  Bytes
+  version    Int
+  savedAt    DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, version])
+}

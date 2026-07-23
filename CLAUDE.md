@@ -36,9 +36,18 @@ no workspace linking. See `README.md` for the full architecture diagram and data
   role-based permissions (owner/editor/viewer) enforced by a `DocumentRoleGuard`, including
   last-owner protection. Verified end-to-end via curl (register → login → CRUD → every
   guard tier → last-owner rule → cascade delete).
-- **Phase 4–7 — not started**: snapshot persistence (wiring Hocuspocus hooks to the
-  `DocumentSnapshot` table added in Phase 3), awareness/cursors, sharing/permissions UI,
-  version history, horizontal scaling. See `README.md` "Build order" for the full list.
+- **Phase 4 — done, not yet committed**: `sync-server` gets its own Prisma client (a
+  minimal, never-migrated mirror of `api`'s schema — `api` stays the canonical
+  migration owner) and talks to Postgres directly from `onLoadDocument`/`onStoreDocument`.
+  `onLoadDocument` rejects any room name that isn't a real `Document.id` (fails fast
+  instead of hitting an FK violation later); `onStoreDocument` appends a new
+  `DocumentSnapshot` version each debounced save (2s/10s), setting up Phase 7's version
+  history. Verified end-to-end with a standalone script
+  (`sync-server/scripts/verify-persistence.ts`): create a document via `api` → write
+  content over WebSocket → disconnect → reconnect fresh → content restored from Postgres;
+  plus the unknown-room-name rejection path.
+- **Phase 5–7 — not started**: awareness/cursors, sharing/permissions UI, version history,
+  horizontal scaling. See `README.md` "Build order" for the full list.
 
 ## Coding conventions
 
@@ -60,10 +69,14 @@ Per subproject (`web/`, `sync-server/`, `api/`):
 | dev | `pnpm --dir web dev` | `pnpm --dir sync-server dev` | `pnpm --dir api start:dev` |
 | build | `pnpm --dir web build` | `pnpm --dir sync-server build` | `pnpm --dir api build` |
 | lint | `pnpm --dir web lint` | *(none yet)* | `pnpm --dir api lint` |
-| test | *(no test suite yet)* | *(none yet)* | `pnpm --dir api test` *(Nest CLI defaults only, no hand-written suites yet)* |
+| test | *(no test suite yet)* | `pnpm --dir sync-server exec tsx scripts/verify-persistence.ts` *(standalone script, not a real test runner)* | `pnpm --dir api test` *(Nest CLI defaults only, no hand-written suites yet)* |
 
-`api` also needs Postgres running: `docker compose up -d postgres` (repo root), then
-`pnpm --dir api prisma migrate dev` for schema changes.
+Both `api` and `sync-server` need Postgres running: `docker compose up -d postgres`
+(repo root). Only `api` runs migrations (`pnpm --dir api prisma migrate dev`) — its
+`prisma/schema.prisma` is canonical. `sync-server` has its own minimal
+`prisma/schema.prisma` (mirrors just `Document`/`DocumentSnapshot`) that is never
+migrated, only `prisma generate`d (`pnpm --dir sync-server exec prisma generate`) after
+pulling schema changes made in `api`.
 
 ## Things that must NEVER be done without asking first
 

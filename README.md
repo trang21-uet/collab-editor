@@ -19,22 +19,28 @@ to learn CRDTs and WebSocket-based sync.
 
 Each client holds an in-memory Yjs document; edits are small binary "updates" sent over
 WebSocket to the Hocuspocus server, which merges updates from all connected clients and
-broadcasts changes back. Hocuspocus periodically persists Yjs document snapshots (binary
-state) to PostgreSQL via a NestJS-exposed persistence hook. NestJS handles everything
-outside real-time sync: user auth, document list, and sharing/permissions
-(owner/editor/viewer roles).
+broadcasts changes back. Hocuspocus persists Yjs document snapshots (binary state) to
+PostgreSQL directly via its own Prisma client, in its `onLoadDocument`/`onStoreDocument`
+hooks — `sync-server` and `api` are both standalone apps with no shared code, so each owns
+a Prisma schema against the same database; `api`'s is canonical and owns all migrations,
+`sync-server`'s is a minimal, never-migrated mirror. NestJS handles everything outside
+real-time sync: user auth, document list, and sharing/permissions (owner/editor/viewer
+roles).
 
 ```
-┌──────────┐   WS (Yjs updates)   ┌─────────────┐   persistence hook   ┌────────────┐
-│  web      │◄────────────────────►│ sync-server │◄────────────────────►│  api        │
-│ (Next.js, │                       │ (Hocuspocus)│                       │ (NestJS)    │
-│  Tiptap,  │                       └─────────────┘                       │  + Prisma   │
-│  Yjs)     │                                                              └─────┬──────┘
-└─────┬─────┘                          REST (auth, docs, permissions)            │
-      └───────────────────────────────────────────────────────────────────────►│
-                                                                          ┌──────▼──────┐
-                                                                          │ PostgreSQL  │
-                                                                          └─────────────┘
+┌──────────┐   WS (Yjs updates)   ┌─────────────┐
+│  web      │◄────────────────────►│ sync-server │
+│ (Next.js, │                       │ (Hocuspocus)│
+│  Tiptap,  │                       └──────┬──────┘
+│  Yjs)     │                              │ Prisma (DocumentSnapshot)
+└─────┬─────┘                              │
+      │ REST (auth, docs, permissions)     │
+      ▼                                    ▼
+┌────────────┐                      ┌─────────────┐
+│  api        │  Prisma (User,      │ PostgreSQL  │
+│ (NestJS)    │──Document, etc.)───►│             │
+│  + Prisma   │                      └─────────────┘
+└────────────┘
 ```
 
 ## Repo structure
@@ -64,7 +70,7 @@ build order below for why.
    verify two browser tabs stay in sync in real time.
 3. [x] **Phase 3** — NestJS backend: auth, Prisma schema per the data model above, REST API
    for document CRUD and permissions.
-4. [ ] **Phase 4** — Wire Hocuspocus's `onStoreDocument` / `onLoadDocument` hooks to
+4. [x] **Phase 4** — Wire Hocuspocus's `onStoreDocument` / `onLoadDocument` hooks to
    persist/load Yjs snapshots from PostgreSQL via Prisma.
 5. [ ] **Phase 5** — Collaboration cursors/awareness (names, colors, live cursor position)
    via `@tiptap/extension-collaboration-cursor`.
@@ -75,23 +81,34 @@ build order below for why.
 
 ## Getting started
 
-**Frontend + sync server** (Phases 1–2):
+**Database** (needed by both `api` and `sync-server`, Phases 3–4):
+
+```bash
+docker compose up -d postgres
+```
+
+**Backend API** (Phase 3) — owns the schema and all migrations:
+
+```bash
+cd api && pnpm install && cp .env.example .env   # fill in JWT_SECRET
+pnpm prisma migrate dev
+pnpm start:dev   # http://localhost:3001
+```
+
+**Sync server** (Phases 2 & 4) — persists Yjs snapshots directly to the same database:
+
+```bash
+cd sync-server && pnpm install && cp .env.example .env
+pnpm exec prisma generate
+pnpm dev   # ws://localhost:1234
+```
+
+**Frontend** (Phase 1):
 
 ```bash
 cd web && pnpm install && pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). In another terminal:
-
-```bash
-cd sync-server && pnpm install && pnpm dev
-```
-
-**Backend API** (Phase 3):
-
-```bash
-docker compose up -d postgres
-cd api && pnpm install && cp .env.example .env   # fill in JWT_SECRET
-pnpm prisma migrate dev
-pnpm start:dev   # http://localhost:3001
-```
+Open [http://localhost:3000](http://localhost:3000). Note: the frontend still connects to
+a hardcoded placeholder room name, not a real document created via `api` — wiring that up
+is a later phase, so the sync server will currently refuse it (see Phase 4 above).
