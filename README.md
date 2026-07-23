@@ -42,7 +42,7 @@ outside real-time sync: user auth, document list, and sharing/permissions
 ```
 collab-editor/
 ├── web/           Next.js frontend (Phase 1 ✅)
-├── api/           NestJS backend — auth, document CRUD, permissions (Phase 3)
+├── api/           NestJS backend — auth, document CRUD, permissions (Phase 3 ✅)
 └── sync-server/   Standalone Hocuspocus WebSocket server (Phase 2 ✅)
 ```
 
@@ -62,7 +62,7 @@ build order below for why.
    and local CRDT updates propagate between two editor instances sharing one `Y.Doc`.
 2. [x] **Phase 2** — Standalone Hocuspocus server; connect the frontend over WebSocket and
    verify two browser tabs stay in sync in real time.
-3. [ ] **Phase 3** — NestJS backend: auth, Prisma schema per the data model above, REST API
+3. [x] **Phase 3** — NestJS backend: auth, Prisma schema per the data model above, REST API
    for document CRUD and permissions.
 4. [ ] **Phase 4** — Wire Hocuspocus's `onStoreDocument` / `onLoadDocument` hooks to
    persist/load Yjs snapshots from PostgreSQL via Prisma.
@@ -75,8 +75,23 @@ build order below for why.
 
 ## Getting started
 
+**Frontend + sync server** (Phases 1–2):
+
 ```bash
 cd web && pnpm install && pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). In another terminal:
+
+```bash
+cd sync-server && pnpm install && pnpm dev
+```
+
+**Backend API** (Phase 3):
+
+```bash
+docker compose up -d postgres
+cd api && pnpm install && cp .env.example .env   # fill in JWT_SECRET
+pnpm prisma migrate dev
+pnpm start:dev   # http://localhost:3001
+```

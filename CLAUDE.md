@@ -14,7 +14,7 @@ sync/merge logic.
   `@tiptap/extension-collaboration-cursor`
 - **CRDT engine:** Yjs
 - **Real-time sync server:** Hocuspocus (Node.js) — `sync-server/`
-- **Backend API:** NestJS (auth, document metadata, permissions) — `api/` (not yet scaffolded)
+- **Backend API:** NestJS (auth, document metadata, permissions) — `api/`
 - **Database:** PostgreSQL + Prisma ORM
 - **Scaling (later phase):** Redis Pub/Sub for multi-instance broadcast
 - **Styling:** TailwindCSS + Ant Design
@@ -30,9 +30,15 @@ no workspace linking. See `README.md` for the full architecture diagram and data
 - **Phase 2 — done, committed** (`0b8d3ca`): standalone Hocuspocus server (`sync-server/`)
   and a `useHocuspocusProvider` hook (`web/src/lib/`) wiring the frontend to it over
   WebSocket; verified real-time sync across two browser tabs.
-- **Phase 3–7 — not started**: NestJS + Prisma backend, snapshot persistence, awareness/
-  cursors, sharing/permissions, version history, horizontal scaling. See `README.md`
-  "Build order" for the full list.
+- **Phase 3 — done, not yet committed**: NestJS backend (`api/`) — Passport+JWT auth
+  (bcrypt, register/login/me), Prisma schema (User/Document/DocumentSnapshot/
+  DocumentPermission) against Postgres (via `docker-compose.yml`), document CRUD, and
+  role-based permissions (owner/editor/viewer) enforced by a `DocumentRoleGuard`, including
+  last-owner protection. Verified end-to-end via curl (register → login → CRUD → every
+  guard tier → last-owner rule → cascade delete).
+- **Phase 4–7 — not started**: snapshot persistence (wiring Hocuspocus hooks to the
+  `DocumentSnapshot` table added in Phase 3), awareness/cursors, sharing/permissions UI,
+  version history, horizontal scaling. See `README.md` "Build order" for the full list.
 
 ## Coding conventions
 
@@ -47,16 +53,17 @@ no workspace linking. See `README.md` for the full architecture diagram and data
 
 ## Standard project commands
 
-Per subproject (`web/`, `sync-server/`; `api/` once scaffolded):
+Per subproject (`web/`, `sync-server/`, `api/`):
 
-| | web | sync-server |
-|---|---|---|
-| dev | `pnpm --dir web dev` | `pnpm --dir sync-server dev` |
-| build | `pnpm --dir web build` | `pnpm --dir sync-server build` |
-| lint | `pnpm --dir web lint` | *(none yet — add ESLint config before Phase 3)* |
-| test | *(no test suite yet — add before/during Phase 2 sync-logic work)* | *(same)* |
+| | web | sync-server | api |
+|---|---|---|---|
+| dev | `pnpm --dir web dev` | `pnpm --dir sync-server dev` | `pnpm --dir api start:dev` |
+| build | `pnpm --dir web build` | `pnpm --dir sync-server build` | `pnpm --dir api build` |
+| lint | `pnpm --dir web lint` | *(none yet)* | `pnpm --dir api lint` |
+| test | *(no test suite yet)* | *(none yet)* | `pnpm --dir api test` *(Nest CLI defaults only, no hand-written suites yet)* |
 
-`api/` commands will be filled in once it's scaffolded (Phase 3).
+`api` also needs Postgres running: `docker compose up -d postgres` (repo root), then
+`pnpm --dir api prisma migrate dev` for schema changes.
 
 ## Things that must NEVER be done without asking first
 

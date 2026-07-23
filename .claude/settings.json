@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // empty' | {\n  read -r f\n  case \"$f\" in\n    */web/*) out=$(pnpm --dir web lint 2>&1); code=$? ;;\n    */sync-server/*) out=$(pnpm --dir sync-server exec tsc --noEmit 2>&1); code=$? ;;\n    *) exit 0 ;;\n  esac\n  if [ \"$code\" -ne 0 ]; then\n    echo \"$out\" >&2\n    exit 2\n  fi\n}",
+            "command": "jq -r '.tool_input.file_path // empty' | {\n  read -r f\n  case \"$f\" in\n    */web/*) out=$(pnpm --dir web lint 2>&1); code=$? ;;\n    */sync-server/*) out=$(pnpm --dir sync-server exec tsc --noEmit 2>&1); code=$? ;;\n    */api/*) out=$(pnpm --dir api lint 2>&1); code=$? ;;\n    *) exit 0 ;;\n  esac\n  if [ \"$code\" -ne 0 ]; then\n    echo \"$out\" >&2\n    exit 2\n  fi\n}",
             "timeout": 60,
             "statusMessage": "Linting changed files..."
           }
