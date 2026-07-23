@@ -43,7 +43,7 @@ outside real-time sync: user auth, document list, and sharing/permissions
 collab-editor/
 ├── web/           Next.js frontend (Phase 1 ✅)
 ├── api/           NestJS backend — auth, document CRUD, permissions (Phase 3)
-└── sync-server/   Standalone Hocuspocus WebSocket server (Phase 2)
+└── sync-server/   Standalone Hocuspocus WebSocket server (Phase 2 ✅)
 ```
 
 Each app is a standalone project (its own `package.json`, no workspace linking) — see the
@@ -60,7 +60,7 @@ build order below for why.
 
 1. [x] **Phase 1** — Minimal Next.js + Tiptap + Yjs, no server: confirm the editor renders
    and local CRDT updates propagate between two editor instances sharing one `Y.Doc`.
-2. [ ] **Phase 2** — Standalone Hocuspocus server; connect the frontend over WebSocket and
+2. [x] **Phase 2** — Standalone Hocuspocus server; connect the frontend over WebSocket and
    verify two browser tabs stay in sync in real time.
 3. [ ] **Phase 3** — NestJS backend: auth, Prisma schema per the data model above, REST API
    for document CRUD and permissions.

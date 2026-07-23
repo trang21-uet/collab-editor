@@ -27,8 +27,9 @@ no workspace linking. See `README.md` for the full architecture diagram and data
 
 - **Phase 1 — done, committed** (`2b44991`): minimal Next.js + Tiptap + Yjs, no server,
   local CRDT sync between two editor instances sharing one `Y.Doc`.
-- **Phase 2 — in progress, uncommitted**: standalone Hocuspocus server (`sync-server/`) and
-  a `useHocuspocusProvider` hook (`web/src/lib/`) wiring the frontend to it over WebSocket.
+- **Phase 2 — done, committed** (`0b8d3ca`): standalone Hocuspocus server (`sync-server/`)
+  and a `useHocuspocusProvider` hook (`web/src/lib/`) wiring the frontend to it over
+  WebSocket; verified real-time sync across two browser tabs.
 - **Phase 3–7 — not started**: NestJS + Prisma backend, snapshot persistence, awareness/
   cursors, sharing/permissions, version history, horizontal scaling. See `README.md`
   "Build order" for the full list.
