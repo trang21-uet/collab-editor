@@ -30,7 +30,7 @@ no workspace linking. See `README.md` for the full architecture diagram and data
 - **Phase 2 — done, committed** (`0b8d3ca`): standalone Hocuspocus server (`sync-server/`)
   and a `useHocuspocusProvider` hook (`web/src/lib/`) wiring the frontend to it over
   WebSocket; verified real-time sync across two browser tabs.
-- **Phase 3 — done, not yet committed**: NestJS backend (`api/`) — Passport+JWT auth
+- **Phase 3 — done, committed** (`01e4ec9`): NestJS backend (`api/`) — Passport+JWT auth
   (bcrypt, register/login/me), Prisma schema (User/Document/DocumentSnapshot/
   DocumentPermission) against Postgres (via `docker-compose.yml`), document CRUD, and
   role-based permissions (owner/editor/viewer) enforced by a `DocumentRoleGuard`, including
