@@ -6,10 +6,15 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 const SYNC_SERVER_URL =
   process.env.NEXT_PUBLIC_SYNC_SERVER_URL ?? "ws://localhost:1234";
 
-export function useHocuspocusProvider(documentName: string) {
+export function useHocuspocusProvider(documentName: string | null) {
   const [provider, setProvider] = useState<HocuspocusProvider | null>(null);
 
   useEffect(() => {
+    if (!documentName) {
+      setProvider(null);
+      return;
+    }
+
     const instance = new HocuspocusProvider({
       url: SYNC_SERVER_URL,
       name: documentName,

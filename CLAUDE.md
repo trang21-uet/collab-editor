@@ -46,8 +46,21 @@ no workspace linking. See `README.md` for the full architecture diagram and data
   (`sync-server/scripts/verify-persistence.ts`): create a document via `api` → write
   content over WebSocket → disconnect → reconnect fresh → content restored from Postgres;
   plus the unknown-room-name rejection path.
-- **Phase 5–7 — not started**: awareness/cursors, sharing/permissions UI, version history,
-  horizontal scaling. See `README.md` "Build order" for the full list.
+- **Phase 5 — done, not yet committed**: collaboration cursors/awareness via
+  `@tiptap/extension-collaboration-caret` (Tiptap v3 renamed it from `-cursor` to
+  `-caret` — the README's original phase description used the old name). Cursor
+  identity is the real logged-in user, not a placeholder: `web` gained its first API
+  client and auth (`web/src/lib/apiClient.ts`, `AuthProvider.tsx`, `AuthForm.tsx`)
+  against `api`'s existing JWT auth, which required adding CORS to `api` (it had
+  none before — `api/src/main.ts`, `WEB_ORIGIN` env var). Since a real user also
+  needs a real `Document.id` to open (the sync server already rejected the old
+  hardcoded placeholder room name), `web/src/lib/useOwnDocument.ts` resolves or
+  creates the user's first document — a minimal stand-in for Phase 6's real
+  document dashboard, not a replacement for it. Cursor color is deterministic
+  per-user-id (`collaboratorColor.ts`), and a presence list reuses the same
+  `provider.awareness` states (`useAwarenessStates.ts`).
+- **Phase 6–7 — not started**: sharing/permissions UI, version history, horizontal
+  scaling. See `README.md` "Build order" for the full list.
 
 ## Coding conventions
 
