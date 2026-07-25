@@ -38,7 +38,14 @@ async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<
 }
 
 export type CurrentUser = { id: string; email: string; name: string };
-export type Document = { id: string; title: string };
+export type Document = { id: string; title: string; createdAt?: string; updatedAt?: string };
+export type Role = "owner" | "editor" | "viewer";
+export type Permission = {
+  documentId: string;
+  userId: string;
+  role: Role;
+  user: { id: string; email: string; name: string };
+};
 
 export const api = {
   register: (body: { email: string; name: string; password: string }) =>
@@ -49,4 +56,24 @@ export const api = {
   listDocuments: (token: string) => apiFetch<Document[]>("/documents", { token }),
   createDocument: (token: string, title: string) =>
     apiFetch<Document>("/documents", { method: "POST", body: { title }, token }),
+  getDocument: (token: string, id: string) => apiFetch<Document>(`/documents/${id}`, { token }),
+  listPermissions: (token: string, documentId: string) =>
+    apiFetch<Permission[]>(`/documents/${documentId}/permissions`, { token }),
+  assignPermission: (token: string, documentId: string, email: string, role: Role) =>
+    apiFetch<Permission>(`/documents/${documentId}/permissions`, {
+      method: "POST",
+      body: { email, role },
+      token,
+    }),
+  updatePermissionRole: (token: string, documentId: string, userId: string, role: Role) =>
+    apiFetch<Permission>(`/documents/${documentId}/permissions/${userId}`, {
+      method: "PATCH",
+      body: { role },
+      token,
+    }),
+  revokePermission: (token: string, documentId: string, userId: string) =>
+    apiFetch<void>(`/documents/${documentId}/permissions/${userId}`, {
+      method: "DELETE",
+      token,
+    }),
 };

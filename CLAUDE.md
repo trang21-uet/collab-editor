@@ -36,7 +36,7 @@ no workspace linking. See `README.md` for the full architecture diagram and data
   role-based permissions (owner/editor/viewer) enforced by a `DocumentRoleGuard`, including
   last-owner protection. Verified end-to-end via curl (register → login → CRUD → every
   guard tier → last-owner rule → cascade delete).
-- **Phase 4 — done, not yet committed**: `sync-server` gets its own Prisma client (a
+- **Phase 4 — done, committed** (`6e31a70`): `sync-server` gets its own Prisma client (a
   minimal, never-migrated mirror of `api`'s schema — `api` stays the canonical
   migration owner) and talks to Postgres directly from `onLoadDocument`/`onStoreDocument`.
   `onLoadDocument` rejects any room name that isn't a real `Document.id` (fails fast
@@ -46,21 +46,42 @@ no workspace linking. See `README.md` for the full architecture diagram and data
   (`sync-server/scripts/verify-persistence.ts`): create a document via `api` → write
   content over WebSocket → disconnect → reconnect fresh → content restored from Postgres;
   plus the unknown-room-name rejection path.
-- **Phase 5 — done, not yet committed**: collaboration cursors/awareness via
+- **Phase 5 — done, committed** (`bc6fc6b`): collaboration cursors/awareness via
   `@tiptap/extension-collaboration-caret` (Tiptap v3 renamed it from `-cursor` to
   `-caret` — the README's original phase description used the old name). Cursor
   identity is the real logged-in user, not a placeholder: `web` gained its first API
   client and auth (`web/src/lib/apiClient.ts`, `AuthProvider.tsx`, `AuthForm.tsx`)
   against `api`'s existing JWT auth, which required adding CORS to `api` (it had
-  none before — `api/src/main.ts`, `WEB_ORIGIN` env var). Since a real user also
-  needs a real `Document.id` to open (the sync server already rejected the old
-  hardcoded placeholder room name), `web/src/lib/useOwnDocument.ts` resolves or
-  creates the user's first document — a minimal stand-in for Phase 6's real
-  document dashboard, not a replacement for it. Cursor color is deterministic
+  none before — `api/src/main.ts`, `WEB_ORIGIN` env var). Cursor color is deterministic
   per-user-id (`collaboratorColor.ts`), and a presence list reuses the same
   `provider.awareness` states (`useAwarenessStates.ts`).
-- **Phase 6–7 — not started**: sharing/permissions UI, version history, horizontal
-  scaling. See `README.md` "Build order" for the full list.
+- **Phase 6 — done, not yet committed**: document dashboard (`web/src/app/dashboard/`)
+  and a sharing UI (`web/src/components/ShareModal.tsx`), built entirely against the
+  sharing/permissions API that Phase 3 already shipped
+  (`/documents/:id/permissions` — no `api` route changes needed). Ant Design was added
+  for the first time in this repo (`antd`, `@ant-design/nextjs-registry` for the App
+  Router SSR registry); Tailwind v4 and antd coexist via `StyleProvider`'s `layer` prop
+  (passed straight to `AntdRegistry`, which already wraps `StyleProvider` internally —
+  no need to import `@ant-design/cssinjs` directly, that breaks in a Server Component)
+  plus an explicit `@layer theme, base, antd, components, utilities;` order in
+  `globals.css` so Tailwind utilities still win. Routing changed: `/` is now a pure
+  auth gate that redirects to `/dashboard`; `/documents/[documentId]` replaced the old
+  inline editor and resolves its Yjs room id from the URL instead of
+  `useOwnDocument.ts` (deleted — its own comment already called out this phase as its
+  retirement). The document editor page derives the current user's role by matching
+  their id against the `listPermissions` response already needed for the collaborator
+  list, rather than adding a role field to `GET /documents/:id` — owners see the Share
+  modal, everyone else sees a read-only collaborator popover. One `api` fix was needed:
+  `PermissionsService.assign`/`updateRole` returned the bare `DocumentPermission` row
+  without the `user` relation that `list()` already included, which crashed the
+  frontend on render after a successful share — both now `include: { user: {...} }` to
+  match. Verified end-to-end with two users: share by email (including the
+  no-such-user 404 and last-owner-protection 400 error paths), role-gated UI, and live
+  co-editing through the new route. Known gap carried forward: the sync server still
+  doesn't enforce roles at the WebSocket layer, so a viewer with the room id could
+  technically still send Yjs writes — unchanged from before, not a Phase 6 regression.
+- **Phase 7 (stretch) — not started**: version history, Redis-based horizontal scaling
+  for Hocuspocus, Docker + Nginx deployment config.
 
 ## Coding conventions
 

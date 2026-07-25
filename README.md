@@ -75,7 +75,7 @@ build order below for why.
 5. [x] **Phase 5** — Collaboration cursors/awareness (names, colors, live cursor position)
    via `@tiptap/extension-collaboration-caret` (the extension was renamed from
    `-cursor` to `-caret` in Tiptap v3).
-6. [ ] **Phase 6** — Document sharing (invite by email, role-based permission enforcement)
+6. [x] **Phase 6** — Document sharing (invite by email, role-based permission enforcement)
    and a document list/dashboard UI (Ant Design + Tailwind).
 7. [ ] **Phase 7 (stretch)** — Version history, Redis-based horizontal scaling for
    Hocuspocus, Docker + Nginx deployment config.
@@ -112,7 +112,7 @@ cd web && pnpm install && pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000). Register/log in (this calls `api`
 directly, so it needs `NEXT_PUBLIC_API_URL` set and `api`'s CORS `WEB_ORIGIN` to match —
-see `web/.env.local.example`); the frontend then resolves or creates a real `Document` for
-that user and connects to it by id, so the sync server accepts and persists it (Phase 4).
-There's no document list/switcher UI yet (Phase 6) — each user always gets their first
-document, so use the same login in a second tab to test cursors/presence together.
+see `web/.env.local.example`) and you'll land on `/dashboard`, where you can create a
+document or open one shared with you. Share a document with another registered user's
+email from its Share button (owner only); log in as that user in a second tab/profile to
+test cursors, presence, and live co-editing together.

@@ -22,6 +22,7 @@ export class PermissionsService {
       where: { documentId_userId: { documentId, userId: user.id } },
       create: { documentId, userId: user.id, role },
       update: { role },
+      include: { user: { select: { id: true, email: true, name: true } } },
     });
   }
 
@@ -37,6 +38,7 @@ export class PermissionsService {
     return this.prisma.documentPermission.update({
       where: { documentId_userId: { documentId, userId } },
       data: { role },
+      include: { user: { select: { id: true, email: true, name: true } } },
     });
   }
 
