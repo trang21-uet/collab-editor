@@ -11,6 +11,7 @@ import {
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+import { RestoreDocumentDto } from './dto/restore-document.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DocumentRoleGuard } from '../common/guards/document-role.guard';
 import { RequireRole } from '../common/decorators/require-role.decorator';
@@ -55,5 +56,19 @@ export class DocumentsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.documentsService.remove(id);
+  }
+
+  @UseGuards(DocumentRoleGuard)
+  @RequireRole(Role.viewer)
+  @Get(':id/versions')
+  listVersions(@Param('id') id: string) {
+    return this.documentsService.listVersions(id);
+  }
+
+  @UseGuards(DocumentRoleGuard)
+  @RequireRole(Role.editor)
+  @Post(':id/restore')
+  restore(@Param('id') id: string, @Body() dto: RestoreDocumentDto) {
+    return this.documentsService.restore(id, dto.version);
   }
 }

@@ -77,8 +77,14 @@ build order below for why.
    `-cursor` to `-caret` in Tiptap v3).
 6. [x] **Phase 6** — Document sharing (invite by email, role-based permission enforcement)
    and a document list/dashboard UI (Ant Design + Tailwind).
-7. [ ] **Phase 7 (stretch)** — Version history, Redis-based horizontal scaling for
-   Hocuspocus, Docker + Nginx deployment config.
+7. **Phase 7 (stretch)**:
+   - [x] Version history — restore an older `DocumentSnapshot` version. The revert runs
+     server-side in `sync-server` via Hocuspocus's `openDirectConnection`, so it works
+     whether or not anyone currently has the document open; `api` exposes
+     `GET/POST /documents/:id/versions|restore` (role-gated) and relays to a new
+     internal-only endpoint on `sync-server` over a shared secret.
+   - [ ] Redis-based horizontal scaling for Hocuspocus.
+   - [ ] Docker + Nginx deployment config.
 
 ## Getting started
 

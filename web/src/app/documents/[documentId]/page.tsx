@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Button, List, Popover, Spin, Typography } from "antd";
 import { CollaborativeEditor } from "@/components/CollaborativeEditor";
 import { ShareModal } from "@/components/ShareModal";
+import { VersionHistoryPanel } from "@/components/VersionHistoryPanel";
 import { api, ApiError, type Document, type Permission } from "@/lib/apiClient";
 import { useHocuspocusProvider } from "@/lib/useHocuspocusProvider";
 import { useRequireAuth } from "@/lib/useRequireAuth";
@@ -18,6 +19,7 @@ export default function DocumentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -75,6 +77,7 @@ export default function DocumentPage() {
 
   const myRole = permissions.find((p) => p.userId === user.id)?.role ?? "viewer";
   const isOwner = myRole === "owner";
+  const canRestore = myRole === "owner" || myRole === "editor";
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-8">
@@ -88,28 +91,31 @@ export default function DocumentPage() {
           </Typography.Title>
         </div>
 
-        {isOwner ? (
-          <Button type="primary" onClick={() => setShareOpen(true)}>
-            Share
-          </Button>
-        ) : (
-          <Popover
-            title="Collaborators"
-            content={
-              <List
-                size="small"
-                dataSource={permissions}
-                renderItem={(p) => (
-                  <List.Item>
-                    {p.user.name} — {p.role}
-                  </List.Item>
-                )}
-              />
-            }
-          >
-            <Button>Collaborators</Button>
-          </Popover>
-        )}
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setHistoryOpen(true)}>History</Button>
+          {isOwner ? (
+            <Button type="primary" onClick={() => setShareOpen(true)}>
+              Share
+            </Button>
+          ) : (
+            <Popover
+              title="Collaborators"
+              content={
+                <List
+                  size="small"
+                  dataSource={permissions}
+                  renderItem={(p) => (
+                    <List.Item>
+                      {p.user.name} — {p.role}
+                    </List.Item>
+                  )}
+                />
+              }
+            >
+              <Button>Collaborators</Button>
+            </Popover>
+          )}
+        </div>
       </div>
 
       {provider && (
@@ -130,6 +136,14 @@ export default function DocumentPage() {
           onPermissionsChange={setPermissions}
         />
       )}
+
+      <VersionHistoryPanel
+        documentId={documentId}
+        token={token}
+        canRestore={canRestore}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+      />
     </main>
   );
 }

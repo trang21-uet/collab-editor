@@ -46,6 +46,7 @@ export type Permission = {
   role: Role;
   user: { id: string; email: string; name: string };
 };
+export type Version = { version: number; savedAt: string };
 
 export const api = {
   register: (body: { email: string; name: string; password: string }) =>
@@ -74,6 +75,14 @@ export const api = {
   revokePermission: (token: string, documentId: string, userId: string) =>
     apiFetch<void>(`/documents/${documentId}/permissions/${userId}`, {
       method: "DELETE",
+      token,
+    }),
+  listVersions: (token: string, documentId: string) =>
+    apiFetch<Version[]>(`/documents/${documentId}/versions`, { token }),
+  restoreVersion: (token: string, documentId: string, version: number) =>
+    apiFetch<void>(`/documents/${documentId}/restore`, {
+      method: "POST",
+      body: { version },
       token,
     }),
 };

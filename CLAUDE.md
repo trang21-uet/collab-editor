@@ -55,7 +55,7 @@ no workspace linking. See `README.md` for the full architecture diagram and data
   none before — `api/src/main.ts`, `WEB_ORIGIN` env var). Cursor color is deterministic
   per-user-id (`collaboratorColor.ts`), and a presence list reuses the same
   `provider.awareness` states (`useAwarenessStates.ts`).
-- **Phase 6 — done, not yet committed**: document dashboard (`web/src/app/dashboard/`)
+- **Phase 6 — done, committed** (`9f1bb7d`): document dashboard (`web/src/app/dashboard/`)
   and a sharing UI (`web/src/components/ShareModal.tsx`), built entirely against the
   sharing/permissions API that Phase 3 already shipped
   (`/documents/:id/permissions` — no `api` route changes needed). Ant Design was added
@@ -80,8 +80,47 @@ no workspace linking. See `README.md` for the full architecture diagram and data
   co-editing through the new route. Known gap carried forward: the sync server still
   doesn't enforce roles at the WebSocket layer, so a viewer with the room id could
   technically still send Yjs writes — unchanged from before, not a Phase 6 regression.
-- **Phase 7 (stretch) — not started**: version history, Redis-based horizontal scaling
-  for Hocuspocus, Docker + Nginx deployment config.
+- **Phase 7a (version history) — done, not yet committed**: `sync-server` gains its
+  first HTTP surface — a small internal-only REST endpoint added via Hocuspocus's
+  `onRequest` extension hook (`sync-server/src/internalApi.ts`), gated by a shared
+  secret (`INTERNAL_SECRET`/`SYNC_SERVER_INTERNAL_SECRET` env vars) since it's reachable
+  on the same port browsers already connect to over WebSocket. The actual revert
+  (`sync-server/src/restore.ts`) decodes an old `DocumentSnapshot`'s bytes into a scratch
+  `Y.Doc`, then uses `Hocuspocus#openDirectConnection` to run one transaction against the
+  *live* Y.Doc that clones the old content over the current content (Yjs updates are
+  additive, so this can't be done via `Y.applyUpdate` — see the file's own comments for
+  why). Content is cloned generically at the `Y.XmlFragment`/`XmlElement`/`XmlText`
+  level rather than via `y-prosemirror`/ProseMirror JSON, keeping `sync-server` free of
+  any editor-schema knowledge (Tiptap's `Collaboration` extension's default field name,
+  `"default"`, confirmed against the installed package). Because the revert is a normal
+  transaction, it flows through the existing broadcast-to-connected-clients and
+  debounced-autosave pipeline for free, and works even when nobody has the document
+  open (`openDirectConnection` loads it from Postgres first via the existing
+  `onLoadDocument` hook). `api` owns the actual authorization (`GET`/`POST
+  /documents/:id/versions|restore`, viewer/editor role-gated via the existing
+  `DocumentRoleGuard`) and relays to sync-server's internal endpoint — sync-server
+  itself still does no per-user checks, consistent with the already-documented
+  WS-layer gap. Web: a "History" button next to Share/Collaborators opens
+  `VersionHistoryPanel.tsx` (list of versions with a per-row Restore button, editor+
+  only, with a confirm step since it overwrites what collaborators are currently
+  looking at). Verified end-to-end: restore while the doc is open (live update in the
+  browser, no reload), restore while nobody has it open (via a direct call to
+  sync-server, confirmed it loads via `onLoadDocument`), and viewer-role gating both in
+  the UI (no Restore buttons) and at the API (`POST .../restore` returns 403 for a
+  viewer, 401 unauthenticated). One real bug caught and fixed during this verification:
+  the internal endpoint's success-path handler originally called its "write response"
+  helper *inside* the same `try` whose `catch` also called it — since that helper
+  always throws after writing (the mechanism used to stop Hocuspocus's own request
+  handler from also writing a fallback "Welcome to Hocuspocus!" response onto an
+  already-ended one, see `internalApi.ts`'s comments), the throw from the success path
+  was being caught by the adjacent `catch` and triggering a second write, crashing the
+  process with `ERR_HTTP_HEADERS_SENT` on every successful restore. Fixed by moving the
+  success response outside the `try`/`catch`. `tsx watch` auto-restarted the process
+  each time this was hit during testing, which is why it wasn't more disruptive to
+  diagnose — worth knowing if this pattern (throw-to-signal-handled in a Hocuspocus
+  `onRequest` hook) is reused elsewhere in `sync-server`.
+- **Phase 7 (stretch), remaining** — not started: Redis-based horizontal scaling for
+  Hocuspocus, Docker + Nginx deployment config.
 
 ## Coding conventions
 
