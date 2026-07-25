@@ -119,8 +119,58 @@ no workspace linking. See `README.md` for the full architecture diagram and data
   each time this was hit during testing, which is why it wasn't more disruptive to
   diagnose — worth knowing if this pattern (throw-to-signal-handled in a Hocuspocus
   `onRequest` hook) is reused elsewhere in `sync-server`.
-- **Phase 7 (stretch), remaining** — not started: Redis-based horizontal scaling for
-  Hocuspocus, Docker + Nginx deployment config.
+- **Pre-existing bug found and fixed while building Phase 7b** (unrelated to Docker
+  itself, but `next build`'s type-checking blocked the `web` image and this project's
+  documented `pnpm --dir web lint` command doesn't catch it — only `next build` does):
+  `web/src/components/CollaborativeEditor.tsx` read `provider.status` directly, but
+  the installed `@hocuspocus/provider@4.4` no longer exposes `.status` on
+  `HocuspocusProvider` itself — it moved onto the shared underlying websocket at
+  `provider.configuration.websocketProvider.status` (support for multiplexing several
+  document providers over one connection). The `"status"` event it forwards still
+  fires the same `{ status }` shape, only the synchronous initial read moved. Worth
+  running `pnpm --dir web build` (not just `lint`) after touching this file again.
+- **Phase 7b (Docker + Nginx deployment) — done, not yet committed**: one multi-stage
+  `Dockerfile` per app (`web`, `api`, `sync-server`), plus `nginx/nginx.conf` as the
+  single public entrypoint (port 80), path-routing `/` → `web`, `/api/` → `api`,
+  `/sync/` → `sync-server` (WebSocket-upgrade aware, with a `location = /sync` exact
+  match alongside the prefix match — `@hocuspocus/provider` strips trailing slashes
+  from its configured URL before connecting, so the browser's upgrade request is the
+  bare `/sync`, not `/sync/`). Because `/api` and `/` share one origin this way, `web`'s
+  API calls become same-origin in this deployment path — CORS no longer applies here,
+  though it's untouched and still needed for the local multi-port `pnpm dev` workflow.
+  Phase 7a's internal restore endpoint gets an explicit `location ~ ^/sync/internal/ {
+  return 404; }` in Nginx (checked before the general `/sync/` block, though Nginx
+  would prioritize it either way since regex locations always beat prefix locations) as
+  defense in depth on top of `sync-server`'s container port never being published to
+  the host. `web/next.config.ts` gained `output: "standalone"`; `api/package.json`
+  moved `prisma` from `devDependencies` to `dependencies` since `api/docker-entrypoint.sh`
+  runs `prisma migrate deploy` before `node dist/src/main` on container start (fine
+  for this project's single-instance compose setup — would race across replicas).
+  `docker-compose.yml` extended in place (still supports `docker compose up -d
+  postgres` alone for local dev, unchanged) with a `pg_isready` healthcheck so
+  `api`/`sync-server` don't race Postgres on cold start. New root `.env.example`
+  (compose reads `.env` from the same directory) for the secrets shared across
+  services (`JWT_SECRET`, `INTERNAL_SECRET`). Three real bugs found and fixed while
+  getting `docker compose build`/`up` working, worth knowing if touching these
+  Dockerfiles again: (1) `corepack enable` alone fails inside the image — corepack's
+  shim strictly validates `package.json`'s `devEngines.packageManager` and rejects its
+  `"^11.16.0"` range (wants an exact version), which never surfaces locally because the
+  host's own `pnpm` isn't installed via corepack at all; fixed by `npm install -g
+  pnpm@11.16.0` directly in every Dockerfile instead. (2) `api`'s runtime stage didn't
+  copy `prisma.config.ts` (Prisma 7's config-file convention, lives next to
+  `package.json`, separate from `prisma/schema.prisma`) — without it `prisma migrate
+  deploy` fails with "datasource.url property is required" even though `DATABASE_URL`
+  is set correctly as a real env var. (3) `api/package.json`'s own `start:prod` script
+  (`node dist/main`) was already stale/broken — `nest build`'s `outDir`/`rootDir`
+  (`dist`/`src`) preserves the `src/` layout, so the real entry point is
+  `dist/src/main.js`; fixed both the script and the Docker entrypoint. Verified: full
+  `docker compose build` + `up -d` clean logs for every service; golden path (register
+  → create doc → live WS sync → reload persists → History → restore) through
+  `http://localhost/` end to end; `/sync/internal/...` returns 404 through the public
+  entrypoint; `docker compose up -d postgres` alone and the local `pnpm dev` workflow
+  both still work unchanged. Redis-based horizontal scaling for Hocuspocus remains the
+  one not-started Phase 7 stretch item — it touches sync architecture directly, so per
+  this file's own rule it needs its own trade-off discussion before starting.
 
 ## Coding conventions
 

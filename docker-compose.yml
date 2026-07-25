@@ -10,6 +10,67 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collab -d collab_editor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://collab:collab@postgres:5432/collab_editor?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 1d
+      PORT: 3001
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost}
+      # api never talks to sync-server over the public Nginx entrypoint — service name
+      # + internal Docker network, same trust boundary as Phase 7a's local setup.
+      SYNC_SERVER_INTERNAL_URL: http://sync-server:1234
+      SYNC_SERVER_INTERNAL_SECRET: ${INTERNAL_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  sync-server:
+    build:
+      context: ./sync-server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://collab:collab@postgres:5432/collab_editor?schema=public
+      PORT: 1234
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        # NEXT_PUBLIC_* vars are inlined at build time (see web/Dockerfile) — these
+        # defaults assume Nginx is reached at http://localhost. Override both for a
+        # real deployment (e.g. https://your-domain/api, wss://your-domain/sync).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_SYNC_SERVER_URL: ${NEXT_PUBLIC_SYNC_SERVER_URL:-ws://localhost/sync}
+    restart: unless-stopped
+    depends_on:
+      - api
+      - sync-server
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web
+      - api
+      - sync-server
 
 volumes:
   postgres-data:

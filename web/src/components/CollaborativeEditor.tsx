@@ -18,7 +18,14 @@ export function CollaborativeEditor({
   label: string;
   user: { id: string; name: string };
 }) {
-  const [status, setStatus] = useState(provider.status);
+  // HocuspocusProvider itself no longer exposes `.status` directly (installed
+  // @hocuspocus/provider@4.4 moved the websocket connection state onto the shared
+  // underlying websocket it wraps, to support multiplexing several document
+  // providers over one connection) — the "status" event it forwards still fires the
+  // same shape, only the synchronous initial read moved.
+  const [status, setStatus] = useState(
+    provider.configuration.websocketProvider.status,
+  );
   const collaborators = useAwarenessStates(provider);
   const color = colorForUserId(user.id);
 

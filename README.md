@@ -84,7 +84,12 @@ build order below for why.
      `GET/POST /documents/:id/versions|restore` (role-gated) and relays to a new
      internal-only endpoint on `sync-server` over a shared secret.
    - [ ] Redis-based horizontal scaling for Hocuspocus.
-   - [ ] Docker + Nginx deployment config.
+   - [x] Docker + Nginx deployment config — `web`/`api`/`sync-server` each get their own
+     multi-stage `Dockerfile`; `nginx/nginx.conf` is a single public entrypoint that
+     path-routes `/` → `web`, `/api/` → `api`, `/sync/` → `sync-server` (WS-upgrade
+     aware), which also makes `web`'s API calls same-origin so CORS no longer applies
+     to this deployment path. `docker compose up -d` runs the whole stack; see
+     `docker-compose.yml` and the root `.env.example`.
 
 ## Getting started
 
