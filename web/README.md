@@ -7,13 +7,29 @@ See the [project README](../README.md) for overall architecture and build phases
 
 ```bash
 pnpm install
+cp .env.local.example .env.local   # set NEXT_PUBLIC_API_URL
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). `/` redirects to `/dashboard` once
+logged in; `/documents/[documentId]` is the live editor route. See the
+[project README](../README.md) for the full build order and the other apps this depends
+on (`api`, `sync-server`).
 
 ## Status
 
-**Phase 1** — two Tiptap editors sharing a single in-memory `Y.Doc` (no server), confirming
-the CRDT binding works. See [`src/components/CollaborativeEditor.tsx`](src/components/CollaborativeEditor.tsx)
-and [`src/app/page.tsx`](src/app/page.tsx).
+All planned phases through 7b are implemented:
+
+- Real-time co-editing via Tiptap + Yjs, synced over WebSocket to `sync-server`
+  (`src/components/CollaborativeEditor.tsx`).
+- Auth (register/login/logout, JWT in `localStorage`) against `api`
+  (`src/lib/AuthProvider.tsx`).
+- Live collaboration cursors, per-user color, and a presence list off
+  `provider.awareness` (`src/lib/useAwarenessStates.ts`, `collaboratorColor.ts`).
+- Document dashboard (`src/app/dashboard/`) and sharing UI
+  (`src/components/ShareModal.tsx`), role-gated (owner/editor/viewer).
+- Version history — a History button + confirm-to-restore flow, editor+ only.
+- Ant Design + Tailwind for styling.
+
+Only the Redis horizontal-scaling stretch item (in `sync-server`) is not built — see the
+project README's build order.

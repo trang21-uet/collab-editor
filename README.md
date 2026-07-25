@@ -6,7 +6,7 @@ to learn CRDTs and WebSocket-based sync.
 ## Tech stack
 
 - **Frontend:** Next.js 15 (App Router), React 19, TypeScript
-- **Rich text editor:** Tiptap + `@tiptap/extension-collaboration` + `@tiptap/extension-collaboration-cursor`
+- **Rich text editor:** Tiptap + `@tiptap/extension-collaboration` + `@tiptap/extension-collaboration-caret`
 - **CRDT engine:** Yjs
 - **Real-time sync server:** Hocuspocus (Node.js)
 - **Backend API:** NestJS (auth, document metadata, permissions)
@@ -47,9 +47,11 @@ roles).
 
 ```
 collab-editor/
-├── web/           Next.js frontend (Phase 1 ✅)
-├── api/           NestJS backend — auth, document CRUD, permissions (Phase 3 ✅)
-└── sync-server/   Standalone Hocuspocus WebSocket server (Phase 2 ✅)
+├── web/               Next.js frontend — editor, dashboard, sharing UI, auth
+├── api/               NestJS backend — auth, document CRUD, permissions, versions
+├── sync-server/       Standalone Hocuspocus WebSocket server — live sync + persistence
+├── nginx/             Nginx config for the single-entrypoint Docker deployment (Phase 7b)
+└── docker-compose.yml Runs web/api/sync-server/postgres/nginx as one stack (Phase 7b)
 ```
 
 Each app is a standalone project (its own `package.json`, no workspace linking) — see the
